@@ -1,0 +1,187 @@
+﻿@page "/list"
+@inherits LayoutComponentBase
+@rendermode InteractiveServer
+@using System.Text.Json
+
+<h3>Todo list</h3>
+<div class="container">
+    <div class="row p-2">
+        <div class="col">
+            <input type="text" @bind="NewUser" class="form-control" />
+        </div>
+        <div class="col">
+            <button class="btn btn-primary" @onclick="async ()=> await OnNewUserClickAsync()">Add user</button>
+        </div>
+        <div class="col">
+            <button class="btn btn-primary" @onclick="async ()=> await OnRemoveUserClickAsync()">Remove user</button>
+        </div>
+    </div>
+    <div class="row p-2" >
+        <div class="col">
+            <button class="btn btn-secondary dropdown-toggle" type="button" @onclick="()=>Dropdown = !Dropdown">@SelectedUser</button>
+            @if (Dropdown)
+            {
+                <ul class="dropdown-menu dropdown-menu-expanded" style="display: block !important;" @onmouseleave="()=>Dropdown = false">
+                    @for (int i = 0; i < Users.Count; i++)
+                    {
+                        int iClone = i;
+                        <li class="dropdown-item" @onclick="()=>SelectedUserIndex = iClone">@Users[i]</li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+    @if (Items != null)
+    {
+        @for (int i = 0; i < UserItems.Count; i++)
+        {
+            <div class="row p-2">
+                <div class="col">
+                    <CascadingValue Value="UserItems[i]">
+                        <TodoList.Components.PageComponents.ListItem />
+                    </CascadingValue>
+                </div>
+            </div>
+        }
+    }
+    <div class="row p-2">
+        <div class="col">
+            <button class="btn btn-primary" @onclick="async ()=> await OnNewItemClickAsync()">New</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private const string STORAGE_USER_LIST = "users.json";
+    private const string STORAGE_ITEMS_LIST = "items.json";
+
+    private string NewUser { get; set; } = string.Empty;
+    private bool Dropdown { get; set; } = false;
+    private int SelectedUserIndex { get; set; } = 0;
+    private string SelectedUser 
+    {
+        get
+        {
+            if (Users == null)
+            {
+                return string.Empty;
+            }
+            else if (Users.Count <= SelectedUserIndex)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                return Users[SelectedUserIndex];
+            }
+        }
+    }
+    private List<ChecklistItem> UserItems
+    {
+        get
+        {
+            return Items.Where((i) => i.Assignee == SelectedUser).ToList();
+        }
+    }
+    private List<string>? Users { get; set; }
+    private List<ChecklistItem> Items { get; set; }
+
+    private async Task OnNewUserClickAsync()
+    {
+        if (Users != null && !string.IsNullOrEmpty(NewUser))
+        {
+            if (Users.Contains(NewUser))
+            {
+                return;
+            }
+
+            Users.Add(NewUser);
+            await SaveUsersAsync();
+        }
+    }
+
+    private async Task OnNewItemClickAsync()
+    {
+        Items.Add(new ChecklistItem(SelectedUser));
+        await SaveItemsAsync();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var res1 = await LoadItemsAsync();
+        if (res1 == null)
+        {
+            res1 = new();
+        }
+        Items = res1;
+
+        var res2 = await LoadUsersAsync();
+        if (res2 == null)
+        {
+            res2 = new();
+        }
+        Users = res2;
+        if (Users.Count == 0)
+        {
+            Users.Add("default user");
+        }
+    }
+
+    private async Task OnRemoveUserClickAsync()
+    {
+        int tempIndex = SelectedUserIndex;
+        string tempUser = SelectedUser;
+
+        if (SelectedUserIndex > 0)
+        {
+            SelectedUserIndex -= 1;
+        }
+        else
+        {
+            SelectedUserIndex = 0;
+        }
+
+        Users.RemoveAt(tempIndex);
+        Items.RemoveAll((i) => i.Assignee == tempUser);
+    }
+
+    private async Task SaveItemsAsync()
+    {
+        var fileStream = File.Create(STORAGE_ITEMS_LIST);
+        await JsonSerializer.SerializeAsync(fileStream, Items);
+    }
+
+    private async Task SaveUsersAsync()
+    {
+        var fileStream = File.Create(STORAGE_USER_LIST);
+        await JsonSerializer.SerializeAsync(fileStream, Users);
+    }
+
+    private async Task<List<string>> LoadUsersAsync()
+    {
+        if (File.Exists(STORAGE_USER_LIST))
+        {
+            var fileStream = File.OpenRead(STORAGE_USER_LIST);
+            List<string> users = await JsonSerializer.DeserializeAsync<List<string>>(fileStream);
+            return users;
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+    private async Task<List<ChecklistItem>> LoadItemsAsync()
+    {
+        if (File.Exists(STORAGE_ITEMS_LIST))
+        {
+            var fileStream = File.OpenRead(STORAGE_ITEMS_LIST);
+            List<ChecklistItem> items = await JsonSerializer.DeserializeAsync<List<ChecklistItem>>(fileStream);
+            return items;
+        }
+        else
+        {
+            return null;
+        }
+    }
+}

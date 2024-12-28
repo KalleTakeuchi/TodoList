@@ -1,0 +1,52 @@
+﻿@rendermode InteractiveServer
+
+<div class="container">
+    <div class="row">
+        <div class="col align-content-center center justify-content-center">
+            <input type="text" class="form-control" @bind="Item.Text" />
+        </div>
+
+        <div class="col align-content-center center justify-content-center">
+            <div style="@CheckboxStyle" @onclick="()=>Item.IsChecked = !Item.IsChecked"></div>
+        </div>
+        <div class="col align-content-center center justify-content-center">
+            <button class="btn btn-danger" @onclick="OnRemoveClick">Remove</button>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    private string CheckboxStyle
+    {
+        get
+        {
+            return string.Format("width: 20pt; height: 20pt; border-radius: 50%; border: 1pt solid black; background-color: {0};", BackgroundColor);
+        }
+    }
+    private string BackgroundColor
+    {
+        get
+        {
+            if (Item == null)
+            {
+                return "white";
+            }
+            if (Item.IsChecked)
+            {
+                return "green";
+            }
+            else
+            {
+                return "white";
+            }
+        }
+    }
+    [CascadingParameter]
+    private ChecklistItem Item { get; set; }
+
+    private void OnRemoveClick()
+    {
+        
+    }
+}
